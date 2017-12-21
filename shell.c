@@ -39,6 +39,7 @@ int makeargv(char *s, const char *delimiters, char** argvp, int MAX_LIST);
 struct sigaction act;
 static int status;
 static int IS_BACKGROUND=0;
+static int ls_check = 0;
 
 typedef struct { // 커맨드 구조체
     char* name;
@@ -192,8 +193,13 @@ void execute_cmd(char *cmdlist)
     
     if(makeargv(cmdlist, " \t", cmdargs, MAX_CMD_ARG) <= 0)
 		fatal("makeargv_cmdargs error");
-	
-    execvp(cmdargs[0], cmdargs);
+
+    if( (strcmp(cmdargs[0], "ls")==0) && cmdargs[1] == NULL && ls_check == 1){
+        execute_ls();
+        exit(0);
+    } else {
+        execvp(cmdUnitArgs[0], cmdargs);
+    }
     fatal("exec error");
 }
 
@@ -214,6 +220,11 @@ void execute_cmdgrp(char *cmdgrp)
     if((count = makeargv(cmdgrp, "|", cmdlist, MAX_CMD_LIST)) <= 0)
         fatal("makeargv_cmdgrp error");
     
+	
+    if(cmdUnit[1] == NULL){
+        ls_check = 1;
+    }
+	
 	for(i=0; i<count-1; i++)
     {
 		pipe(pfd);
@@ -268,6 +279,30 @@ void execute_cmdline(char* cmdline)
         }
     }
     
+void execute_ls()
+{
+    DIR *dirp;
+    struct dirent *dirEntry;
+    struct stat file_info;
+    char *file_name;
+    int temp;
+
+    if((dirp = opendir(".")) == NULL)
+        exit(1);
+
+    while(dirEntry = readdir(dirp)){
+        if((temp = stat(dirEntry->d_name, &file_info)) == -1)
+        {
+            perror("Error in execute_ls() stat");
+            exit(0);
+        }
+
+        if(dirEntry->d_ino != 0)
+            printf("%s   ", dirEntry->d_name);
+    }
+    printf("\n");
+    closedir(dirp);
+  }
 }
 
 
